@@ -1,7 +1,25 @@
 import re
 from youtube_transcript_api import YouTubeTranscriptApi
 
-api = YouTubeTranscriptApi()
+import os
+import base64
+import tempfile
+
+def get_cookies_path():
+    cookies_b64 = os.environ.get("YOUTUBE_COOKIES")
+    if not cookies_b64:
+        if os.path.exists("cookies.txt"):
+            return "cookies.txt"
+        return None
+    try:
+        tmp_dir = tempfile.gettempdir()
+        cookie_path = os.path.join(tmp_dir, "youtube_cookies.txt")
+        with open(cookie_path, "wb") as f:
+            f.write(base64.b64decode(cookies_b64))
+        return cookie_path
+    except Exception:
+        return None
+
 
 
 def extract_video_id(url: str) -> str:
@@ -23,18 +41,17 @@ def get_transcript(url: str) -> str:
     """Fetch and concatenate the transcript for a YouTube video."""
     video_id = extract_video_id(url)
 
+    cookies = get_cookies_path()
     try:
-        transcript = api.fetch(video_id)
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, cookies=cookies)
     except Exception:
         try:
-            transcript_list = api.list(video_id)
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies=cookies)
             available = list(transcript_list)
             if not available:
-                raise ValueError(
-                    "No transcripts available for this video."
-                )
+                raise ValueError("No transcripts available for this video.")
             first = available[0]
-            transcript = api.fetch(video_id, languages=[first.language_code])
+            transcript = first.fetch()
         except ValueError:
             raise
         except Exception:
@@ -42,7 +59,7 @@ def get_transcript(url: str) -> str:
                 "Could not retrieve transcript. The video may not have captions available."
             )
 
-    full_text = " ".join(snippet.text for snippet in transcript.snippets)
+    full_text = " ".join(snippet["text"] for snippet in transcript)
 
     if not full_text.strip():
         raise ValueError("Transcript is empty. The video may not contain spoken content.")
