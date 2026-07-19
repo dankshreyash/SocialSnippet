@@ -43,9 +43,11 @@ def get_transcript(url: str) -> str:
 
     cookies = get_cookies_path()
     try:
+        # Try fetching the default transcript
         transcript = YouTubeTranscriptApi.get_transcript(video_id, cookies=cookies)
-    except Exception:
+    except Exception as e1:
         try:
+            # Fallback to listing transcripts and picking the first available
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies=cookies)
             available = list(transcript_list)
             if not available:
@@ -54,9 +56,9 @@ def get_transcript(url: str) -> str:
             transcript = first.fetch()
         except ValueError:
             raise
-        except Exception:
+        except Exception as e:
             raise ValueError(
-                "Could not retrieve transcript. The video may not have captions available."
+                f"Could not retrieve transcript. Error 1: {str(e1)} | Error 2: {str(e)}"
             )
 
     full_text = " ".join(snippet["text"] for snippet in transcript)
