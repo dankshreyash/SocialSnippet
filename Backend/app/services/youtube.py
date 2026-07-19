@@ -54,6 +54,7 @@ def get_transcript(url: str) -> str:
             cj = http.cookiejar.MozillaCookieJar(cookies_path)
             cj.load(ignore_discard=True, ignore_expires=True)
             session.cookies = cj
+            cookie_error = f"LOADED {len(cj)} COOKIES"
             api = YouTubeTranscriptApi(http_client=session)
         except Exception as ce:
             cookie_error = f"COOKIE LOAD ERROR: {str(ce)}"
