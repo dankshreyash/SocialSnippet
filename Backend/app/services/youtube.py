@@ -1,6 +1,26 @@
 import re
+import os
+import base64
+import tempfile
 import yt_dlp
 import requests
+
+def get_cookies_path():
+    """Decode YOUTUBE_COOKIES env var and save to a temporary file."""
+    cookies_b64 = os.environ.get("YOUTUBE_COOKIES")
+    if not cookies_b64:
+        if os.path.exists("cookies.txt"):
+            return "cookies.txt"
+        return None
+    
+    try:
+        tmp_dir = tempfile.gettempdir()
+        cookie_path = os.path.join(tmp_dir, "youtube_cookies.txt")
+        with open(cookie_path, "wb") as f:
+            f.write(base64.b64decode(cookies_b64))
+        return cookie_path
+    except Exception:
+        return None
 
 def extract_video_id(url: str) -> str:
     """Extract the video ID from various YouTube URL formats."""
@@ -18,6 +38,8 @@ def extract_video_id(url: str) -> str:
 
 def get_transcript(url: str) -> str:
     video_id = extract_video_id(url)
+    cookies_path = get_cookies_path()
+    
     ydl_opts = {
         'quiet': True,
         'skip_download': True,
@@ -25,6 +47,8 @@ def get_transcript(url: str) -> str:
         'writeautomaticsub': True,
         'subtitleslangs': ['en', 'hi', 'en-US'],
     }
+    if cookies_path:
+        ydl_opts['cookiefile'] = cookies_path
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
