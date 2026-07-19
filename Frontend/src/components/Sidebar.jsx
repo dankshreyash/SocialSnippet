@@ -45,7 +45,7 @@ export default function Sidebar({
         {/* Inner container to maintain content width during transition */}
         <div className="w-72 h-full flex flex-col">
         {/* Header */}
-        <div className="px-4 pt-10 pb-4 border-b border-dark-700/50 flex items-center gap-2">
+        <div className="px-4 mt-24 pb-4 border-b border-dark-700/50 flex items-center gap-2">
           <button
             onClick={onNewChat}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 text-white font-semibold text-sm hover:from-accent-400 hover:to-accent-500 hover:shadow-lg hover:shadow-accent-500/25 active:scale-[0.98] transition-all duration-300"
