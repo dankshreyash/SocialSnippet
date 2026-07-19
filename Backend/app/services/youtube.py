@@ -1,17 +1,22 @@
 import re
-from youtube_transcript_api import YouTubeTranscriptApi
-
 import os
 import base64
 import tempfile
+import http.cookiejar
+import requests
+from youtube_transcript_api import YouTubeTranscriptApi
 
 def get_cookies_path():
+    """Decode YOUTUBE_COOKIES env var and save to a temporary file."""
     cookies_b64 = os.environ.get("YOUTUBE_COOKIES")
     if not cookies_b64:
+        # If running locally, check if cookies.txt exists in the same directory
         if os.path.exists("cookies.txt"):
             return "cookies.txt"
         return None
+    
     try:
+        # Save to a temporary file (works on Vercel /tmp)
         tmp_dir = tempfile.gettempdir()
         cookie_path = os.path.join(tmp_dir, "youtube_cookies.txt")
         with open(cookie_path, "wb") as f:
@@ -19,7 +24,6 @@ def get_cookies_path():
         return cookie_path
     except Exception:
         return None
-
 
 
 def extract_video_id(url: str) -> str:
@@ -40,28 +44,41 @@ def extract_video_id(url: str) -> str:
 def get_transcript(url: str) -> str:
     """Fetch and concatenate the transcript for a YouTube video."""
     video_id = extract_video_id(url)
+    cookies_path = get_cookies_path()
+    
+    api = None
+    if cookies_path:
+        try:
+            session = requests.Session()
+            cj = http.cookiejar.MozillaCookieJar(cookies_path)
+            cj.load(ignore_discard=True, ignore_expires=True)
+            session.cookies = cj
+            api = YouTubeTranscriptApi(http_client=session)
+        except Exception:
+            api = YouTubeTranscriptApi()
+    else:
+        api = YouTubeTranscriptApi()
 
-    cookies = get_cookies_path()
     try:
-        # Try fetching the default transcript
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, cookies=cookies)
+        # Try fetching the default transcript (usually English)
+        transcript = api.fetch(video_id)
     except Exception as e1:
         try:
             # Fallback to listing transcripts and picking the first available
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies=cookies)
+            transcript_list = api.list(video_id)
             available = list(transcript_list)
             if not available:
                 raise ValueError("No transcripts available for this video.")
             first = available[0]
-            transcript = first.fetch()
+            transcript = api.fetch(video_id, languages=[first.language_code])
         except ValueError:
             raise
-        except Exception as e:
+        except Exception as e2:
             raise ValueError(
-                f"Could not retrieve transcript. Error 1: {str(e1)} | Error 2: {str(e)}"
+                f"Could not retrieve transcript. The video may not have captions available or YouTube blocked the request. Debug: {str(e1)} | {str(e2)}"
             )
 
-    full_text = " ".join(snippet["text"] for snippet in transcript)
+    full_text = " ".join(snippet.text for snippet in transcript.snippets)
 
     if not full_text.strip():
         raise ValueError("Transcript is empty. The video may not contain spoken content.")
