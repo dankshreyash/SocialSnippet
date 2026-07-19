@@ -47,6 +47,7 @@ def get_transcript(url: str) -> str:
     cookies_path = get_cookies_path()
     
     api = None
+    cookie_error = ""
     if cookies_path:
         try:
             session = requests.Session()
@@ -54,9 +55,11 @@ def get_transcript(url: str) -> str:
             cj.load(ignore_discard=True, ignore_expires=True)
             session.cookies = cj
             api = YouTubeTranscriptApi(http_client=session)
-        except Exception:
+        except Exception as ce:
+            cookie_error = f"COOKIE LOAD ERROR: {str(ce)}"
             api = YouTubeTranscriptApi()
     else:
+        cookie_error = "NO COOKIES PATH RETURNED"
         api = YouTubeTranscriptApi()
 
     try:
@@ -75,7 +78,7 @@ def get_transcript(url: str) -> str:
             raise
         except Exception as e2:
             raise ValueError(
-                f"Could not retrieve transcript. The video may not have captions available or YouTube blocked the request. Debug: {str(e1)} | {str(e2)}"
+                f"Could not retrieve transcript. {cookie_error} | Debug: {str(e1)} | {str(e2)}"
             )
 
     full_text = " ".join(snippet.text for snippet in transcript.snippets)
