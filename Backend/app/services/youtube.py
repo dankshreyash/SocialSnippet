@@ -51,6 +51,10 @@ def get_transcript(url: str) -> str:
     if cookies_path:
         try:
             session = requests.Session()
+            session.headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+            })
             cj = http.cookiejar.MozillaCookieJar(cookies_path)
             cj.load(ignore_discard=True, ignore_expires=True)
             session.cookies = cj
@@ -58,10 +62,18 @@ def get_transcript(url: str) -> str:
             api = YouTubeTranscriptApi(http_client=session)
         except Exception as ce:
             cookie_error = f"COOKIE LOAD ERROR: {str(ce)}"
-            api = YouTubeTranscriptApi()
+            fallback_session = requests.Session()
+            fallback_session.headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            })
+            api = YouTubeTranscriptApi(http_client=fallback_session)
     else:
         cookie_error = "NO COOKIES PATH RETURNED"
-        api = YouTubeTranscriptApi()
+        fallback_session = requests.Session()
+        fallback_session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        })
+        api = YouTubeTranscriptApi(http_client=fallback_session)
 
     try:
         # Try fetching the default transcript (usually English)
